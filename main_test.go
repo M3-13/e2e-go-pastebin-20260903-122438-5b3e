@@ -54,7 +54,7 @@ func TestStubRoutesAreWired(t *testing.T) {
 	}{
 		{http.MethodPost, "/pastes"},
 		{http.MethodGet, "/pastes"},
-		{http.MethodGet, "/pastes/abc123"},
+		{http.MethodGet, "/pastes/not-valid"},
 	}
 
 	for _, c := range cases {
