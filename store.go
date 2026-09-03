@@ -32,17 +32,69 @@ func NewStore() *Store {
 }
 
 func (s *Store) Create(content, language string, expiresIn time.Duration) (Paste, error) {
-	return Paste{}, nil
+	now := time.Now().UTC()
+	p := Paste{
+		ID:        NewID(),
+		Content:   content,
+		Language:  language,
+		CreatedAt: now,
+	}
+	if expiresIn > 0 {
+		exp := now.Add(expiresIn)
+		p.ExpiresAt = &exp
+	}
+
+	s.mu.Lock()
+	s.pastes[p.ID] = p
+	s.mu.Unlock()
+
+	return p, nil
 }
 
 func (s *Store) Get(id string) (Paste, bool) {
-	return Paste{}, false
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	p, ok := s.pastes[id]
+	if !ok {
+		return Paste{}, false
+	}
+	if p.ExpiresAt != nil && time.Now().After(*p.ExpiresAt) {
+		delete(s.pastes, id)
+		return Paste{}, false
+	}
+	return p, true
 }
 
 func (s *Store) List() []PasteMeta {
-	return nil
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := time.Now()
+	metas := make([]PasteMeta, 0, len(s.pastes))
+	for id, p := range s.pastes {
+		if p.ExpiresAt != nil && now.After(*p.ExpiresAt) {
+			delete(s.pastes, id)
+			continue
+		}
+		metas = append(metas, PasteMeta{
+			ID:        p.ID,
+			Language:  p.Language,
+			CreatedAt: p.CreatedAt,
+			ExpiresAt: p.ExpiresAt,
+		})
+	}
+	return metas
 }
 
 func (s *Store) Delete(id string) bool {
-	return false
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	p, ok := s.pastes[id]
+	if !ok {
+		return false
+	}
+	delete(s.pastes, id)
+	return p.ExpiresAt == nil || time.Now().Before(*p.ExpiresAt)
 }
