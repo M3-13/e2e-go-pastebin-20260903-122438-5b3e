@@ -2,11 +2,6 @@ package main
 
 import "net/http"
 
-// store is the shared in-memory paste store. It is declared here because the
-// handler files need a single shared instance and store.go (owned by another
-// ticket) does not yet declare it.
-var store = NewStore()
-
 func DeletePasteHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if !isValidHexID(id) {
